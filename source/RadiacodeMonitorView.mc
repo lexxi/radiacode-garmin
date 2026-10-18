@@ -109,6 +109,15 @@ class RadiacodeMonitorView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
 
+        // BLE diagnostic above the existing measurement layout.
+        dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(
+            x, h * 6 / 100,
+            Graphics.FONT_XTINY,
+            _bleStatus,
+            Graphics.TEXT_JUSTIFY_CENTER
+        );
+
         // DOSISLEISTUNG (unchanged layout)
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawText(
