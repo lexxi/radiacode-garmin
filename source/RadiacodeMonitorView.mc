@@ -8,7 +8,6 @@ class RadiacodeMonitorView extends WatchUi.View {
 
     // DEMO only: no connection to a real Radiacode device.
     var _timer;
-    var _scanTimer;
     var _bleDelegate;
     var _bleStatus = "BLE: NOT STARTED";
     var _deviceCount = 0;
@@ -20,7 +19,6 @@ class RadiacodeMonitorView extends WatchUi.View {
     function initialize() {
         View.initialize();
         _timer = new Timer.Timer();
-        _scanTimer = new Timer.Timer();
     }
 
     function onShow() {
@@ -31,7 +29,6 @@ class RadiacodeMonitorView extends WatchUi.View {
 
     function onHide() {
         _timer.stop();
-        _scanTimer.stop();
         try {
             BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
         } catch (e) {
@@ -62,12 +59,12 @@ class RadiacodeMonitorView extends WatchUi.View {
     function startBleScan() {
         _knownNames = [];
         _deviceCount = 0;
+        _seconds = 0;
         _bleStatus = "BLE: SCANNING";
         try {
             _bleDelegate = new RadiacodeBleDelegate(self);
             BluetoothLowEnergy.setDelegate(_bleDelegate);
             BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_SCANNING);
-            _scanTimer.start(method(:stopBleScan), 15000, false);
         } catch (e) {
             _bleStatus = "BLE UNAVAILABLE";
             System.println("BLE scan failed: " + e);
@@ -89,6 +86,10 @@ class RadiacodeMonitorView extends WatchUi.View {
 
     function onSample() {
         _seconds += 1;
+        // Use the already working 1-second simulation timer to end BLE scanning.
+        if (_seconds == 15) {
+            stopBleScan();
+        }
 
         // Deterministic test pattern: 0.104 ... 0.144 µSv/h.
         // A non-random pattern makes simulator testing reproducible.
