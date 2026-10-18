@@ -34,7 +34,6 @@ class RadiacodeMonitorView extends WatchUi.View {
         _scanTimer.stop();
         try {
             BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
-            BluetoothLowEnergy.setDelegate(null);
         } catch (e) {
             System.println("BLE stop: " + e);
         }
