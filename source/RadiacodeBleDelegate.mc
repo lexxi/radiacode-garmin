@@ -24,6 +24,7 @@ class RadiacodeBleDelegate extends BluetoothLowEnergy.BleDelegate {
     }
 
     function onScanStateChange(state, status) {
+        _view.onBleScanState(state, status);
         if (status != BluetoothLowEnergy.STATUS_SUCCESS) {
             _view.setBleStatus("BLE SCAN ERROR");
         }
