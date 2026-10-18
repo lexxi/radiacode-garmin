@@ -2,7 +2,7 @@
 
 A Connect IQ watch app for displaying radiation measurements from a Radiacode 103 on a Garmin vívoactive 5.
 
-> **Project status: v0.2 — simulated live data.** Both readings are synthetic. There is **no connection to a Radiacode device yet**, and the app must not be used for radiation safety decisions.
+> **Project status: v0.3 BLE discovery experiment — not yet device-tested.** Both readings are synthetic. There is **no connection to a Radiacode device yet**, and the app must not be used for radiation safety decisions.
 
 ## Display
 
@@ -32,11 +32,11 @@ The project targets **vívoactive 5** and specifies **minimum Connect IQ API 5.2
 
 Do not commit your developer key. Key files (`*.der`, `*.pem`, `*.key`) and build output are ignored by Git.
 
-## Simulation behavior\n\nThe sample timer runs every 1000 ms while the app view is visible. The demonstration integrates each sample as `rate / 3600` µSv. It is deliberately not a calibrated dosimeter; values reset when the app is launched again. The accumulated dose is rendered with four decimals to make small changes visible.\n\n## Planned milestones
+## Simulation behavior\n\nThe sample timer runs every 1000 ms while the app view is visible. The demonstration integrates each sample as `rate / 3600` µSv. It is deliberately not a calibrated dosimeter; values reset when the app is launched again. The accumulated dose is rendered with four decimals to make small changes visible.\n\n## BLE scan test (v0.3)\n\nThe watch app starts a 15-second BLE scan when opened. The bottom status line shows scanning, a count of distinct advertised device names, or `RADIACODE FOUND` when a device advertises a name containing `radiacode` (case-insensitive). The scan does **not** pair or connect. BLE logs also print device names to the simulator/debug console if available. Restart the app to scan again.\n\nTo test on real hardware, install the development build on a vívoactive 5 and keep the Radiacode 103 powered on nearby. Disconnect the Radiacode iPhone app during the test. The simulator cannot prove radio discovery. A device that does not advertise its name will not count towards the named-device total.\n\n## Planned milestones
 
 - **v0.1:** Static dose and dose-rate display in the simulator — done.
 - **v0.2:** Periodically changing simulated dose-rate values and accumulated dose — implemented; simulator test pending.
-- **v0.3:** Evaluate and implement a compatible transport for real Radiacode 103 data.
+- **v0.3:** BLE discovery diagnostic (15-second scan, advertised names, on-screen scan status) — implemented, awaiting hardware verification. GATT connection and real measurements are not yet implemented.
 - **v1.0:** Stable display with real measurements, connection status and stale-data handling.
 
 ### Data transport limitations
