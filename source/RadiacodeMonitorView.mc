@@ -10,6 +10,7 @@ class RadiacodeMonitorView extends WatchUi.View {
     var _timer;
     var _bleDelegate;
     var _bleStatus = "BLE: NOT STARTED";
+    var _scanCallback = "CB: NONE";
     var _deviceCount = 0;
     var _advertisementCount = 0;
     var _knownNames = [];
@@ -36,6 +37,12 @@ class RadiacodeMonitorView extends WatchUi.View {
         } catch (e) {
             System.println("BLE stop: " + e);
         }
+    }
+
+    function onBleScanState(state, status) {
+        _scanCallback = "CB " + state.toString() + "/" + status.toString();
+        System.println("BLE onScanStateChange state=" + state + " status=" + status);
+        WatchUi.requestUpdate();
     }
 
     function setBleStatus(status) {
@@ -70,6 +77,7 @@ class RadiacodeMonitorView extends WatchUi.View {
         _seconds = 0;
         _scanStopped = false;
         _bleStatus = "BLE: SCANNING";
+        _scanCallback = "CB: NONE";
         try {
             _bleDelegate = new RadiacodeBleDelegate(self);
             BluetoothLowEnergy.setDelegate(_bleDelegate);
@@ -133,6 +141,9 @@ class RadiacodeMonitorView extends WatchUi.View {
             (_bleStatus == "RADIACODE FOUND" ? " RAD" : ""),
             Graphics.TEXT_JUSTIFY_CENTER
         );
+
+        dc.drawText(x, h * 10 / 100, Graphics.FONT_XTINY,
+            _scanCallback, Graphics.TEXT_JUSTIFY_CENTER);
 
         // DOSISLEISTUNG (unchanged layout)
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
