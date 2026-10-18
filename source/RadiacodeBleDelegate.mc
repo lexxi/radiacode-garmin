@@ -13,7 +13,8 @@ class RadiacodeBleDelegate extends BluetoothLowEnergy.BleDelegate {
     function onScanResults(results) {
         var entry = results.next();
         while (entry != null) {
-            var name = entry.getDeviceName();
+            var scanResult = entry as BluetoothLowEnergy.ScanResult;
+            var name = scanResult.getDeviceName();
             if (name != null) {
                 _view.onBleDevice(name);
             }
