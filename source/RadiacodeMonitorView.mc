@@ -11,6 +11,7 @@ class RadiacodeMonitorView extends WatchUi.View {
     var _bleDelegate;
     var _bleStatus = "BLE: NOT STARTED";
     var _deviceCount = 0;
+    var _advertisementCount = 0;
     var _knownNames = [];
     var _seconds = 0;
     var _scanStopped = false;
@@ -42,6 +43,11 @@ class RadiacodeMonitorView extends WatchUi.View {
         WatchUi.requestUpdate();
     }
 
+    function onBleAdvertisement() {
+        _advertisementCount += 1;
+        WatchUi.requestUpdate();
+    }
+
     function onBleDevice(name) {
         // Count unique advertised names; unnamed advertisements are ignored.
         if (_knownNames.indexOf(name) == -1) {
@@ -60,6 +66,7 @@ class RadiacodeMonitorView extends WatchUi.View {
     function startBleScan() {
         _knownNames = [];
         _deviceCount = 0;
+        _advertisementCount = 0;
         _seconds = 0;
         _scanStopped = false;
         _bleStatus = "BLE: SCANNING";
@@ -122,7 +129,8 @@ class RadiacodeMonitorView extends WatchUi.View {
             x, h * 6 / 100,
             Graphics.FONT_XTINY,
             (_scanStopped ? "STOP " : "SCAN ") + _seconds.toString() + "s " +
-            (_bleStatus == "RADIACODE FOUND" ? "RAD" : _deviceCount.toString()),
+            "P" + _advertisementCount.toString() + " N" + _deviceCount.toString() +
+            (_bleStatus == "RADIACODE FOUND" ? " RAD" : ""),
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
