@@ -13,6 +13,7 @@ class RadiacodeMonitorView extends WatchUi.View {
     var _deviceCount = 0;
     var _knownNames = [];
     var _seconds = 0;
+    var _scanStopped = false;
     var _doseRate = 0.124;
     var _dose = 0.0;
 
@@ -60,6 +61,7 @@ class RadiacodeMonitorView extends WatchUi.View {
         _knownNames = [];
         _deviceCount = 0;
         _seconds = 0;
+        _scanStopped = false;
         _bleStatus = "BLE: SCANNING";
         try {
             _bleDelegate = new RadiacodeBleDelegate(self);
@@ -73,13 +75,17 @@ class RadiacodeMonitorView extends WatchUi.View {
     }
 
     function stopBleScan() {
+        // Set a visible result before calling BLE: even an API error
+        // must not leave the screen stuck on "SCANNING".
+        _scanStopped = true;
+        if (_bleStatus == "BLE: SCANNING") {
+            _bleStatus = "BLE: NO NAMED DEV";
+        }
         try {
             BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
         } catch (e) {
+            _bleStatus = "BLE STOP ERROR";
             System.println("BLE scan stop failed: " + e);
-        }
-        if (_bleStatus == "BLE: SCANNING") {
-            _bleStatus = "BLE: NO NAMED DEV";
         }
         WatchUi.requestUpdate();
     }
@@ -87,7 +93,7 @@ class RadiacodeMonitorView extends WatchUi.View {
     function onSample() {
         _seconds += 1;
         // Use the already working 1-second simulation timer to end BLE scanning.
-        if (_seconds == 15) {
+        if (_seconds >= 15 && !_scanStopped) {
             stopBleScan();
         }
 
@@ -115,7 +121,7 @@ class RadiacodeMonitorView extends WatchUi.View {
         dc.drawText(
             x, h * 6 / 100,
             Graphics.FONT_XTINY,
-            _bleStatus,
+            "v0.3.2 " + _bleStatus + " " + _seconds.toString() + "s",
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
