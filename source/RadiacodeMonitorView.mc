@@ -1,4 +1,6 @@
 import Toybox.Graphics;
+import Toybox.BluetoothLowEnergy as Ble;
+import Toybox.System;
 import Toybox.Timer;
 import Toybox.WatchUi;
 
@@ -6,6 +8,11 @@ class RadiacodeMonitorView extends WatchUi.View {
 
     // DEMO only: no connection to a real Radiacode device.
     var _timer;
+    var _scanTimer;
+    var _bleDelegate;
+    var _bleStatus = "BLE: NOT STARTED";
+    var _deviceCount = 0;
+    var _knownNames = [];
     var _seconds = 0;
     var _doseRate = 0.124;
     var _dose = 0.0;
@@ -13,15 +20,72 @@ class RadiacodeMonitorView extends WatchUi.View {
     function initialize() {
         View.initialize();
         _timer = new Timer.Timer();
+        _scanTimer = new Timer.Timer();
     }
 
     function onShow() {
         // One simulated sample per second while the view is visible.
         _timer.start(method(:onSample), 1000, true);
+        startBleScan();
     }
 
     function onHide() {
         _timer.stop();
+        _scanTimer.stop();
+        try {
+            Ble.setScanState(Ble.SCAN_STATE_OFF);
+            Ble.setDelegate(null);
+        } catch (e) {
+            System.println("BLE stop: " + e);
+        }
+    }
+
+    function setBleStatus(status) {
+        _bleStatus = status;
+        WatchUi.requestUpdate();
+    }
+
+    function onBleDevice(name) {
+        // Count unique advertised names; unnamed advertisements are ignored.
+        if (_knownNames.indexOf(name) == -1) {
+            _knownNames.add(name);
+            _deviceCount += 1;
+            System.println("BLE found: " + name);
+        }
+        if (name.toLower().find("radiacode") != null) {
+            _bleStatus = "RADIACODE FOUND";
+        } else if (_bleStatus != "RADIACODE FOUND") {
+            _bleStatus = "BLE DEVICES: " + _deviceCount;
+        }
+        WatchUi.requestUpdate();
+    }
+
+    function startBleScan() {
+        _knownNames = [];
+        _deviceCount = 0;
+        _bleStatus = "BLE: SCANNING";
+        try {
+            _bleDelegate = new RadiacodeBleDelegate(self);
+            Ble.setDelegate(_bleDelegate);
+            Ble.setScanState(Ble.SCAN_STATE_SCANNING);
+            _scanTimer.start(method(:stopBleScan), 15000, false);
+        } catch (e) {
+            _bleStatus = "BLE UNAVAILABLE";
+            System.println("BLE scan failed: " + e);
+        }
+        WatchUi.requestUpdate();
+    }
+
+    function stopBleScan() {
+        try {
+            Ble.setScanState(Ble.SCAN_STATE_OFF);
+        } catch (e) {
+            System.println("BLE scan stop failed: " + e);
+        }
+        if (_bleStatus == "BLE: SCANNING") {
+            _bleStatus = "BLE: NO NAMED DEV";
+        }
+        WatchUi.requestUpdate();
     }
 
     function onSample() {
