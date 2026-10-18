@@ -121,7 +121,8 @@ class RadiacodeMonitorView extends WatchUi.View {
         dc.drawText(
             x, h * 6 / 100,
             Graphics.FONT_XTINY,
-            "v0.3.2 " + _bleStatus + " " + _seconds.toString() + "s",
+            (_scanStopped ? "STOP " : "SCAN ") + _seconds.toString() + "s " +
+            (_bleStatus == "RADIACODE FOUND" ? "RAD" : _deviceCount.toString()),
             Graphics.TEXT_JUSTIFY_CENTER
         );
 
