@@ -46,3 +46,7 @@ The vívoactive 5 Connect IQ environment does not currently provide a confirmed 
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Real-device BLE discovery findings (2026-10-18)
+
+The vívoactive 5 scan and callback work on hardware, but the Radiacode 103 does not appear in the scan results (`P0 N0`). A controlled ESP32-CAM experiment indicates a strong relationship between BLE discoverability flags and Garmin scan visibility (`0x05` and `0x06` visible; no flags and `0x04` invisible). This is an observed behavior, not a confirmed Garmin firmware specification. **See [BLE discovery test log](docs/BLE_DISCOVERY_TESTS.md)** for conditions, measurements, and official API constraints. The app is not connected to the Radiacode; on-screen dose values are simulated.
