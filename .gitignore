@@ -1,0 +1,17 @@
+
+# Garmin Build
+bin/
+build/
+*.prg
+*.iq
+*.debug.xml
+
+# Developer Keys
+*.der
+*.pem
+*.key
+
+# Editor / Betriebssystem
+.vscode/.browse.VC.db*
+.DS_Store
+Thumbs.db
