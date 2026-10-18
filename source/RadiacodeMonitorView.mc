@@ -1,21 +1,19 @@
+import Toybox.Communications;
 import Toybox.Graphics;
-import Toybox.BluetoothLowEnergy;
 import Toybox.System;
 import Toybox.Timer;
 import Toybox.WatchUi;
 
+// v0.4 HTTPS diagnostic. These are static DEMO values, NOT live Radiacode measurements.
 class RadiacodeMonitorView extends WatchUi.View {
+    const DEMO_URL = "https://raw.githubusercontent.com/lexxi/radiacode-garmin/main/data/demo.json";
 
-    // DEMO only: no connection to a real Radiacode device.
     var _timer;
-    var _bleDelegate;
-    var _bleStatus = "BLE: NOT STARTED";
-    var _deviceCount = 0;
-    var _advertisementCount = 0;
-    var _knownNames = [];
     var _seconds = 0;
-    var _scanStopped = false;
-    var _doseRate = 0.124;
+    var _lastPoll = -15;
+    var _requestPending = false;
+    var _httpStatus = "HTTP: WAIT";
+    var _doseRate = 0.0;
     var _dose = 0.0;
 
     function initialize() {
@@ -24,94 +22,60 @@ class RadiacodeMonitorView extends WatchUi.View {
     }
 
     function onShow() {
-        // One simulated sample per second while the view is visible.
-        _timer.start(method(:onSample), 1000, true);
-        startBleScan();
+        _seconds = 0;
+        _lastPoll = -15;
+        _requestPending = false;
+        _httpStatus = "HTTP: WAIT";
+        _timer.start(method(:onTick), 1000, true);
+        pollDemo();
     }
 
     function onHide() {
         _timer.stop();
-        try {
-            BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
-        } catch (e) {
-            System.println("BLE stop: " + e);
-        }
     }
 
-    function setBleStatus(status) {
-        _bleStatus = status;
-        WatchUi.requestUpdate();
-    }
-
-    function onBleAdvertisement() {
-        _advertisementCount += 1;
-        WatchUi.requestUpdate();
-    }
-
-    function onBleDevice(name) {
-        // Count unique advertised names; unnamed advertisements are ignored.
-        if (_knownNames.indexOf(name) == -1) {
-            _knownNames.add(name);
-            _deviceCount += 1;
-            System.println("BLE found: " + name);
-        }
-        if (name.toLower().find("radiacode") != null) {
-            _bleStatus = "RADIACODE FOUND";
-        } else if (_bleStatus != "RADIACODE FOUND") {
-            _bleStatus = "BLE DEVICES: " + _deviceCount;
-        }
-        WatchUi.requestUpdate();
-    }
-
-    function startBleScan() {
-        _knownNames = [];
-        _deviceCount = 0;
-        _advertisementCount = 0;
-        _seconds = 0;
-        _scanStopped = false;
-        _bleStatus = "BLE: SCANNING";
-        try {
-            _bleDelegate = new RadiacodeBleDelegate(self);
-            BluetoothLowEnergy.setDelegate(_bleDelegate);
-            BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_SCANNING);
-        } catch (e) {
-            _bleStatus = "BLE UNAVAILABLE";
-            System.println("BLE scan failed: " + e);
-        }
-        WatchUi.requestUpdate();
-    }
-
-    function stopBleScan() {
-        // Set a visible result before calling BLE: even an API error
-        // must not leave the screen stuck on "SCANNING".
-        _scanStopped = true;
-        if (_bleStatus == "BLE: SCANNING") {
-            _bleStatus = "BLE: NO NAMED DEV";
-        }
-        try {
-            BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
-        } catch (e) {
-            _bleStatus = "BLE STOP ERROR";
-            System.println("BLE scan stop failed: " + e);
-        }
-        WatchUi.requestUpdate();
-    }
-
-    function onSample() {
+    function onTick() {
         _seconds += 1;
-        // Use the already working 1-second simulation timer to end BLE scanning.
-        if (_seconds >= 15 && !_scanStopped) {
-            stopBleScan();
+        // Keep requests infrequent for the initial proof of concept.
+        if (!_requestPending && _seconds - _lastPoll >= 15) {
+            pollDemo();
         }
+        WatchUi.requestUpdate();
+    }
 
-        // Deterministic test pattern: 0.104 ... 0.144 µSv/h.
-        // A non-random pattern makes simulator testing reproducible.
-        _doseRate = 0.104 + ((_seconds % 5) * 0.010);
+    function pollDemo() {
+        _lastPoll = _seconds;
+        _requestPending = true;
+        _httpStatus = "HTTP: LOADING";
+        try {
+            var options = {
+                :method => Communications.HTTP_REQUEST_METHOD_GET,
+                :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON
+            };
+            Communications.makeWebRequest(DEMO_URL, null, options, method(:onDemoResponse));
+        } catch (e) {
+            _requestPending = false;
+            _httpStatus = "HTTP: EXCEPTION";
+            System.println("HTTP request exception: " + e);
+        }
+        WatchUi.requestUpdate();
+    }
 
-        // Dose in µSv = dose rate in µSv/h multiplied by 1/3600 h.
-        // This is a demo estimate, not a reading from Radiacode.
-        _dose += _doseRate / 3600.0;
-
+    function onDemoResponse(code, data) {
+        _requestPending = false;
+        if (code == 200 && data != null && (data instanceof Toybox.Lang.Dictionary)) {
+            var rate = data["dose_rate"];
+            var dose = data["dose"];
+            if (rate != null && dose != null) {
+                _doseRate = rate.toFloat();
+                _dose = dose.toFloat();
+                _httpStatus = "HTTP: 200 DEMO";
+            } else {
+                _httpStatus = "HTTP: BAD JSON";
+            }
+        } else {
+            _httpStatus = "HTTP: " + code.toString();
+        }
         WatchUi.requestUpdate();
     }
 
@@ -123,61 +87,27 @@ class RadiacodeMonitorView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
 
-        // BLE diagnostic above the existing measurement layout.
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(
-            x, h * 6 / 100,
-            Graphics.FONT_XTINY,
-            (_scanStopped ? "STOP " : "SCAN ") + _seconds.toString() + "s " +
-            "P" + _advertisementCount.toString() + " N" + _deviceCount.toString() +
-            (_bleStatus == "RADIACODE FOUND" ? " RAD" : ""),
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        dc.drawText(x, h * 6 / 100, Graphics.FONT_XTINY,
+            _httpStatus, Graphics.TEXT_JUSTIFY_CENTER);
 
-        // DOSISLEISTUNG (unchanged layout)
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(
-            x, h * 16 / 100,
-            Graphics.FONT_SMALL,
-            "DOSISLEISTUNG",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
+        dc.drawText(x, h * 16 / 100, Graphics.FONT_SMALL,
+            "DOSISLEISTUNG", Graphics.TEXT_JUSTIFY_CENTER);
 
         dc.setColor(Graphics.COLOR_GREEN, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(
-            x + 35, h * 33 / 100,
-            Graphics.FONT_NUMBER_MEDIUM,
-            _doseRate.format("%.3f"),
-            Graphics.TEXT_JUSTIFY_RIGHT
-        );
-        dc.drawText(
-            x + 40, h * 39 / 100,
-            Graphics.FONT_SMALL,
-            "\u00B5Sv/h",
-            Graphics.TEXT_JUSTIFY_LEFT
-        );
+        dc.drawText(x + 35, h * 33 / 100, Graphics.FONT_NUMBER_MEDIUM,
+            _doseRate.format("%.3f"), Graphics.TEXT_JUSTIFY_RIGHT);
+        dc.drawText(x + 40, h * 39 / 100, Graphics.FONT_SMALL,
+            "\u00B5Sv/h", Graphics.TEXT_JUSTIFY_LEFT);
 
-        // DOSIS (unchanged layout)
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(
-            x, h * 59 / 100,
-            Graphics.FONT_SMALL,
-            "DOSIS",
-            Graphics.TEXT_JUSTIFY_CENTER
-        );
-
-        dc.drawText(
-            x + 20, h * 74 / 100,
-            Graphics.FONT_LARGE,
-            _dose.format("%.4f"),
-            Graphics.TEXT_JUSTIFY_RIGHT
-        );
+        dc.drawText(x, h * 59 / 100, Graphics.FONT_SMALL,
+            "DOSIS", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(x + 20, h * 74 / 100, Graphics.FONT_LARGE,
+            _dose.format("%.4f"), Graphics.TEXT_JUSTIFY_RIGHT);
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(
-            x + 25, h * 77 / 100,
-            Graphics.FONT_SMALL,
-            "\u00B5Sv",
-            Graphics.TEXT_JUSTIFY_LEFT
-        );
+        dc.drawText(x + 25, h * 77 / 100, Graphics.FONT_SMALL,
+            "\u00B5Sv", Graphics.TEXT_JUSTIFY_LEFT);
     }
 }
