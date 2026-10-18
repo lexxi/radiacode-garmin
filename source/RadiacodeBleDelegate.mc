@@ -1,8 +1,8 @@
-import Toybox.BluetoothLowEnergy as Ble;
+import Toybox.BluetoothLowEnergy;
 import Toybox.WatchUi;
 
 // Scan-only diagnostic. Does not connect, pair or read measurements.
-class RadiacodeBleDelegate extends Ble.BleDelegate {
+class RadiacodeBleDelegate extends BluetoothLowEnergy.BleDelegate {
     var _view;
 
     function initialize(view) {
@@ -22,7 +22,7 @@ class RadiacodeBleDelegate extends Ble.BleDelegate {
     }
 
     function onScanStateChange(state, status) {
-        if (status != Ble.STATUS_SUCCESS) {
+        if (status != BluetoothLowEnergy.STATUS_SUCCESS) {
             _view.setBleStatus("BLE SCAN ERROR");
         }
     }
