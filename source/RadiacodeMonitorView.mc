@@ -1,5 +1,5 @@
 import Toybox.Graphics;
-import Toybox.BluetoothLowEnergy as Ble;
+import Toybox.BluetoothLowEnergy;
 import Toybox.System;
 import Toybox.Timer;
 import Toybox.WatchUi;
@@ -33,8 +33,8 @@ class RadiacodeMonitorView extends WatchUi.View {
         _timer.stop();
         _scanTimer.stop();
         try {
-            Ble.setScanState(Ble.SCAN_STATE_OFF);
-            Ble.setDelegate(null);
+            BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
+            BluetoothLowEnergy.setDelegate(null);
         } catch (e) {
             System.println("BLE stop: " + e);
         }
@@ -66,8 +66,8 @@ class RadiacodeMonitorView extends WatchUi.View {
         _bleStatus = "BLE: SCANNING";
         try {
             _bleDelegate = new RadiacodeBleDelegate(self);
-            Ble.setDelegate(_bleDelegate);
-            Ble.setScanState(Ble.SCAN_STATE_SCANNING);
+            BluetoothLowEnergy.setDelegate(_bleDelegate);
+            BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_SCANNING);
             _scanTimer.start(method(:stopBleScan), 15000, false);
         } catch (e) {
             _bleStatus = "BLE UNAVAILABLE";
@@ -78,7 +78,7 @@ class RadiacodeMonitorView extends WatchUi.View {
 
     function stopBleScan() {
         try {
-            Ble.setScanState(Ble.SCAN_STATE_OFF);
+            BluetoothLowEnergy.setScanState(BluetoothLowEnergy.SCAN_STATE_OFF);
         } catch (e) {
             System.println("BLE scan stop failed: " + e);
         }
